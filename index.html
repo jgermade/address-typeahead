@@ -15,8 +15,17 @@
         padding: 8px
       }
 
+      .typeahead-wrapper {
+        position: relative;
+      }
+
       .typeahead-predictions {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
         border: 1px solid #ccc;
+        background: white;
       }
 
       .typeahead-predictions .predictions .prediction {
@@ -60,6 +69,7 @@
           <button type="submit" class="pure-button pure-button-primary">Buscar</button>
         </fieldset>
       </form>
+      <div class="typeahead-wrapper"></div>
       <pre id="result"></pre>
     </main>
     <script>
@@ -95,7 +105,7 @@
       if( appKey ) {
         ta = new Typeahead('google', appKey, {
           google: googleConfig, messages: messages
-        }).bind('input[type=search]', onValidresult, 'main');
+        }).bind('input[type=search]', onValidresult, '.typeahead-wrapper');
         inputKey.value = appKey;
       }
 
@@ -105,7 +115,7 @@
         if( ta ) ta.unbind();
         ta = new Typeahead('google', appKey, {
           google: googleConfig, messages: messages
-        }).bind('input[type=search]', onValidresult, 'main');
+        }).bind('input[type=search]', onValidresult, '.typeahead-wrapper');
       });
     </script>
   </body>
