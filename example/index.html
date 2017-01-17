@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Demo Typeahead</title>
+
+    <script src="./address-typeahead.js"></script>
+    <style rel="stylesheet">
+
+      .typeahead-predictions {
+        border: 1px solid #ccc;
+      }
+
+      .typeahead-predictions .predictions .prediction {
+        padding: 8px;
+      }
+        .typeahead-predictions .predictions .prediction:hover {
+          background: #eee;
+          cursor: pointer;
+        }
+
+        .typeahead-predictions .predictions .prediction.selected {
+          border-right: 4px solid #444
+        }
+
+      .typeahead-predictions .predictions .prediction + .prediction {
+        border-top: 1px solid #ddd;
+      }
+
+      .typeahead-predictions > .typeahead-license {
+        padding: 8px;
+        text-align: right;
+        border-top: 1px solid #ddd;
+      }
+
+      .typeahead-predictions > .typeahead-license img {
+        vertical-align: middle;
+      }
+
+    </style>
+  </head>
+  <body>
+    <form action="javascript:;">
+      <input type="text" placeholder="app key"></input>
+      <input type="search" placeholder="Buscar dirección" autofocus required></input>
+      <button type="submit">Buscar</button>
+    </form>
+    <script>
+      var appKey = localStorage.getItem('app-key'), ta,
+          inputKey = document.querySelector('input[type=text]'),
+          googleConfig = {
+            types: ['address'],
+            componentRestrictions: {
+              country: 'es'
+            }
+          },
+          messages = {
+            number_missing: 'Falta el número de la dirección'
+          },
+          onValidresult = function (result) {
+            document.getElementById('result').innerHTML = JSON.stringify(result, null, '\t');
+          };
+
+      if( appKey ) {
+        ta = new Typeahead('google', appKey, {
+          google: googleConfig, messages: messages
+        }).bind('input[type=search]', onValidresult);
+        inputKey.value = appKey;
+      }
+
+      inputKey.addEventListener('input', function () {
+        localStorage.setItem('app-key', this.value);
+        appKey = this.value;
+        if( ta ) ta.unbind();
+        ta = new Typeahead('google', appKey, {
+          google: googleConfig, messages: messages
+        }).bind('input[type=search]', onValidresult);
+      });
+    </script>
+    <pre id="result"></pre>
+  </body>
+</html>
