@@ -30,6 +30,7 @@
 
       .typeahead-predictions .predictions .prediction {
         padding: 8px;
+        border-left: 4px solid transparent;
       }
         .typeahead-predictions .predictions .prediction:hover {
           background: #eee;
@@ -37,7 +38,7 @@
         }
 
         .typeahead-predictions .predictions .prediction.selected {
-          border-right: 4px solid #444
+          border-left-color: #444;
         }
 
       .typeahead-predictions .predictions .prediction + .prediction {
@@ -103,7 +104,7 @@
           };
 
       if( appKey ) {
-        ta = new Typeahead('google', appKey, {
+        ta = new AddressTypeahead('google', appKey, {
           google: googleConfig, messages: messages
         }).bind('input[type=search]', onValidresult, '.typeahead-wrapper');
         inputKey.value = appKey;
@@ -113,7 +114,7 @@
         localStorage.setItem('app-key', this.value);
         appKey = this.value;
         if( ta ) ta.unbind();
-        ta = new Typeahead('google', appKey, {
+        ta = new AddressTypeahead('google', appKey, {
           google: googleConfig, messages: messages
         }).bind('input[type=search]', onValidresult, '.typeahead-wrapper');
       });

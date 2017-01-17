@@ -8,7 +8,7 @@
     define([], factory);
   } else {
     // Browser globals
-    root.Typeahead = factory();
+    root.AddressTypeahead = factory();
   }
 }(this, function () {
 
@@ -206,6 +206,13 @@
   GooglePlaces.prototype.licenseHTML = '<img src="https://developers.google.com/places/documentation/images/powered-by-google-on-white.png?hl=es-419"/>';
 
   GooglePlaces.prototype.getPredictionHTML = function (prediction) {
+    console.log('prediction', prediction);
+    var cursor = 0;
+
+    for( var i = 0, n = prediction.matched_substrings.length; i < n ; i++ ) {
+      prediction.matched_substrings[i];
+    }
+
     return prediction.description;
   }
 
@@ -238,7 +245,7 @@
 
   // --------------------------------------------------------------------------
 
-  function Typeahead (type, key, config) {
+  function AddressTypeahead (type, key, config) {
     if( type === 'google' ) this.places = new GooglePlaces(key, config.google);
 
     this.config = config || {};
@@ -249,7 +256,7 @@
     if( !this.places ) throw new Error('typeahead `' + type + '` not supported');
   }
 
-  Typeahead.prototype.bind = function (input, onValidPlace, wrapperSelector) {
+  AddressTypeahead.prototype.bind = function (input, onValidPlace, wrapperSelector) {
     input = typeof input === 'string' ? document.querySelector(input) : input;
     this.input = input;
 
@@ -273,7 +280,7 @@
             wrapper.style.display = null;
           }
 
-          if( waitingNumber || addressResult ) {
+          if( waitingNumber ) {
             if( predictions.length === 1 ) {
               console.log('prediction', predictions[0]);
               places.getDetails(predictions[0], onPlace);
@@ -315,6 +322,7 @@
           places.getPredictions(value, cb);
         }),
         fetchResults = function (value, cb) {
+          addressResult = null;
           if( value ) {
             predictionsCache[value] ? updatePredictions(predictionsCache[value]) : debouncedPredictions(value, function (results) {
               predictionsCache[value] = results;
@@ -330,8 +338,8 @@
 
           input.value = address2Search( address, true );
 
-          wrapper.style.display = 'none';
-          
+          if( document.activeElement !== input ) wrapper.style.display = 'none';
+
           if( address.street_number ) {
             input.setCustomValidity('');
             updatePredictions([]);
@@ -368,6 +376,8 @@
         el = el.parentElement;
       }
 
+      console.log('mousedown', predictionsWrapper);
+
       wrapper.style.display = 'none';
     }, true);
 
@@ -387,7 +397,7 @@
           if( children[selectedCursor] ) removeClass(children[selectedCursor], 'selected');
           addClass(children[nextCursor], 'selected');
           selectedCursor = nextCursor;
-          wrapper.style.display = null;
+          if( predictions.length ) wrapper.style.display = null;
           break;
         case 40:
           if( !predictionsWrapper.children.length ) return;
@@ -397,7 +407,7 @@
           if( children[selectedCursor] ) removeClass(children[selectedCursor], 'selected');
           addClass(children[nextCursor], 'selected');
           selectedCursor = nextCursor;
-          wrapper.style.display = null;
+          if( predictions.length ) wrapper.style.display = null;
           break;
         case 13:
           e.preventDefault();
@@ -412,20 +422,31 @@
 
     wrapper.style.display = 'none';
     listen(input, 'focus', function () {
-      if( waitingNumber ) return;
+      if( waitingNumber ) {
+        setTimeout(function () {
+          input.setSelectionRange(addressResult.address.street.length + 2, addressResult.address.street.length + 2);
+        }, 0);
+        return;
+      }
       // wrapper.style.display = null;
-      fetchResults(this.value);
+      if( addressResult ) {
+        setTimeout(function () {
+          input.setSelectionRange(0, input.value.length);
+        }, 0);
+      } else fetchResults(this.value);
     });
     listen(input, 'click', function () {
-      wrapper.style.display = null;
-      if( this !== document.activeElement ) fetchResults(this.value);
+      // wrapper.style.display = null;
+      fetchResults(this.value, function () {
+        wrapper.style.display = null;
+      });
     });
 
     return this;
   };
 
-  Typeahead.prototype.unbind = function () { return this; };
+  AddressTypeahead.prototype.unbind = function () { return this; };
 
-  return Typeahead;
+  return AddressTypeahead;
 
 }));
