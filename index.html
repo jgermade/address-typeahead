@@ -7,6 +7,14 @@
     <script src="./address-typeahead.js"></script>
     <style rel="stylesheet">
 
+      body > main {
+        display: block;
+        width: 960px;
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 8px
+      }
+
       .typeahead-predictions {
         border: 1px solid #ccc;
       }
@@ -38,13 +46,22 @@
       }
 
     </style>
+
+    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous" />
   </head>
   <body>
-    <form action="javascript:;">
-      <input type="text" placeholder="Google Maps API key" required></input>
-      <input type="search" placeholder="Buscar dirección" autofocus required></input>
-      <button type="submit">Buscar</button>
-    </form>
+    <main>
+      <form action="javascript:;" class="pure-form">
+        <fieldset>
+          <legend>Google Address Typeahead DEMO</legend>
+
+          <input type="text" placeholder="Google Maps API key" required></input>
+          <input type="search" placeholder="Buscar dirección" autofocus required></input>
+          <button type="submit" class="pure-button pure-button-primary">Buscar</button>
+        </fieldset>
+      </form>
+      <pre id="result"></pre>
+    </main>
     <script>
       var qs = (function () {
         var qs = {},
@@ -78,7 +95,7 @@
       if( appKey ) {
         ta = new Typeahead('google', appKey, {
           google: googleConfig, messages: messages
-        }).bind('input[type=search]', onValidresult);
+        }).bind('input[type=search]', onValidresult, 'main');
         inputKey.value = appKey;
       }
 
@@ -88,9 +105,8 @@
         if( ta ) ta.unbind();
         ta = new Typeahead('google', appKey, {
           google: googleConfig, messages: messages
-        }).bind('input[type=search]', onValidresult);
+        }).bind('input[type=search]', onValidresult, 'main');
       });
     </script>
-    <pre id="result"></pre>
   </body>
 </html>
