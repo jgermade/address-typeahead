@@ -206,14 +206,19 @@
   GooglePlaces.prototype.licenseHTML = '<img src="https://developers.google.com/places/documentation/images/powered-by-google-on-white.png?hl=es-419"/>';
 
   GooglePlaces.prototype.getPredictionHTML = function (prediction) {
-    console.log('prediction', prediction);
-    var cursor = 0;
+    var cursor = 0, src = prediction.description, result = '', from, len;
 
     for( var i = 0, n = prediction.matched_substrings.length; i < n ; i++ ) {
-      prediction.matched_substrings[i];
+      from = prediction.matched_substrings[i].offset;
+      len = prediction.matched_substrings[i].length;
+      result += src.substr(cursor, from - cursor);
+      result += '<strong>' + src.substr(from, len) + '</strong>';
+      cursor = from + len;
     }
 
-    return prediction.description;
+    result += src.substr(cursor);
+
+    return result;
   }
 
   GooglePlaces.prototype.parsePlace = function (place) {
@@ -256,7 +261,7 @@
     if( !this.places ) throw new Error('typeahead `' + type + '` not supported');
   }
 
-  AddressTypeahead.prototype.bind = function (input, onValidPlace, wrapperSelector) {
+  AddressTypeahead.prototype.bind = function (input, onValidPlace, appendTo) {
     input = typeof input === 'string' ? document.querySelector(input) : input;
     this.input = input;
 
@@ -314,9 +319,10 @@
           }
 
           waitingNumber = false;
+          removeClass(input, 'waiting-number');
         };
 
-    ( wrapperSelector ? document.querySelector(wrapperSelector) : document.body ).appendChild(wrapper);
+    ( appendTo ? ( typeof appendTo === 'string' ? document.querySelector(appendTo) : appendTo ) : document.body ).appendChild(wrapper);
 
     var debouncedPredictions = debounce(function (value, cb) {
           places.getPredictions(value, cb);
@@ -347,6 +353,7 @@
           } else {
             input.setCustomValidity(ta.messages.number_missing);
             waitingNumber = true;
+            addClass(input, 'waiting-number');
             if( document.activeElement !== input ) input.focus();
             input.setSelectionRange(address.street.length + 2, address.street.length + 2);
           }
@@ -382,7 +389,7 @@
     }, true);
 
     listen(input, 'keydown', function (e) {
-      if( !waitingNumber ) wrapper.style.display = null;
+      // if( !waitingNumber ) wrapper.style.display = null;
       // console.log('code', e.keyCode);
 
       var children = predictionsWrapper.children,
