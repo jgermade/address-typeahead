@@ -46,7 +46,21 @@
       <button type="submit">Buscar</button>
     </form>
     <script>
-      var appKey = localStorage.getItem('app-key'), ta,
+      var qs = (function () {
+        var qs = {},
+            search = location.href.split('?')[1];
+
+        if(search) {
+          search.split('&').forEach(function (part) {
+            var parts = part.split('=');
+            qs[parts[0]] = parts[1];
+          });
+        }
+
+        return qs;
+      })();
+
+      var appKey = qs.key || localStorage.getItem('app-key'), ta,
           inputKey = document.querySelector('input[type=text]'),
           googleConfig = {
             types: ['address'],
