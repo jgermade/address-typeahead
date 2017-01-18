@@ -80,7 +80,6 @@
 
   function address2Search (address, numberPlaceholder) {
     if( !address ) return '';
-    console.log('address2Search', address);
     return address.street + ( commaIf(address.street_number) || (numberPlaceholder ? ', ' : '') ) + commaIf(address.city || address.locality);
   }
 
@@ -237,10 +236,6 @@
       state: fields.administrative_area_level_1
     };
 
-    console.log('address', address);
-    console.log('fields', fields);
-    console.log('place', place);
-
     return {
       address: address,
       fields: fields,
@@ -258,7 +253,8 @@
 
     this.config = config || {};
     this.messages = extend({
-      number_missing: 'Falta el número de la calle'
+      number_missing: 'Falta el número de la calle',
+      make_choice: 'No es una dirección válida'
     }, this.config.messages || {});
 
     if( !this.places ) throw new Error('typeahead `' + type + '` not supported');
@@ -280,7 +276,7 @@
         predictions = [],
         selectedCursor = -1,
         addressResult = null,
-        renderPredictions = function (_predictions, cb, beforeRender) {
+        renderPredictions = function (_predictions, beforeRender, afterRender) {
           var i, n, children = predictionsWrapper.children;
 
           predictions = _predictions;
@@ -305,7 +301,7 @@
             }
           }
 
-          safeFn(cb)();
+          safeFn(afterRender)();
         };
 
     ( appendTo ? ( typeof appendTo === 'string' ? document.querySelector(appendTo) : appendTo ) : document.body ).appendChild(wrapper);
@@ -315,13 +311,13 @@
           loading();
           places.getPredictions(value, cb);
         }),
-        fetchResults = function (value, cb, beforeRender) {
+        fetchResults = function (value, beforeRender, afterRender) {
 
           addressResult = null;
 
           if( value ) {
             if( predictionsCache[value] ) {
-              renderPredictions(predictionsCache[value], cb, beforeRender);
+              renderPredictions(predictionsCache[value], beforeRender, afterRender);
             } else {
               var sec = ++numDebounced;
               debouncedPredictions(value, function () {
@@ -330,11 +326,11 @@
                 if( sec !== numDebounced ) return;
                 removeClass(wrapper, 'js-typeahead-loading');
                 predictionsCache[value] = results;
-                renderPredictions(results, cb, beforeRender);
+                renderPredictions(results, beforeRender, afterRender);
               });
             }
           } else {
-            renderPredictions([], cb, beforeRender);
+            renderPredictions([], beforeRender, afterRender);
           }
         },
         onPlace = function (place) {
@@ -351,8 +347,7 @@
           } else {
             input.setCustomValidity(ta.messages.number_missing);
             addClass(input, 'waiting-number');
-            if( document.activeElement !== input ) input.focus();
-            input.setSelectionRange(address.street.length + 2, address.street.length + 2);
+            focusAddressNumber();
           }
 
         };
@@ -374,17 +369,50 @@
 
     function onInput (_e) {
       var value = this.value, currentAddress = addressResult;
+
+      // if( !addressResult ) {
+      //   input.setCustomValidity(ta.messages.number_missing);
+      // }
+
       fetchResults(value, function () {
-        if( currentAddress && predictions.length === 1 ) {
-          addressResult = currentAddress;
-          places.getDetails(predictions[0], onPlace);
-        }
-      }, function () {
         if( lastValue === null || value !== lastValue ) {
           selectedCursor = predictions.length ? 0 : -1;
           lastValue = value;
         }
+
+        if( currentAddress && predictions.length === 1 ) {
+          addressResult = currentAddress;
+          places.getDetails(predictions[selectedCursor], onPlace);
+          // input.setCustomValidity('');
+        }
+        //   input.setCustomValidity(ta.messages.number_missing);
+        // }
       });
+    }
+
+    function onBlur (e) {
+      if( !addressResult && predictionsWrapper.children[selectedCursor] ) {
+        places.getDetails(predictions[selectedCursor], function (details) {
+          onPlace(details);
+          if( addressResult ) {
+            if( addressResult.address.street_number ) {
+              wrapper.style.display = 'none';
+              input.blur();
+            } else {
+              focusAddressNumber();
+            }
+          }
+        });
+        e.preventDefault();
+        focusAddressNumber();
+        return;
+      }
+      if( waitingNumber() ) {
+        e.preventDefault();
+        focusAddressNumber();
+        return;
+      }
+      wrapper.style.display = 'none';
     }
 
     listen(input, 'input', onInput);
@@ -431,7 +459,8 @@
           selectedCursor = nextCursor;
           break;
         case 13:
-          if( !addressResult ) e.preventDefault();
+          onBlur(e);
+          // if( !addressResult ) e.preventDefault();
           break;
       }
     });
@@ -439,44 +468,19 @@
     if( document.activeElement !== input ) wrapper.style.display = 'none';
 
     listen(input, 'focus', function () {
-      if( addressResult && addressResult.address.street_number === undefined ) {
-        setTimeout(function () {
-          input.setSelectionRange(addressResult.address.street.length + 2, addressResult.address.street.length + 2);
-        }, 0);
+      if( waitingNumber() ) {
+        focusAddressNumber();
       }
 
       wrapper.style.display = null;
     });
 
-    listen(input, 'blur', function (e) {
-      if( !addressResult && predictionsWrapper.children[selectedCursor] ) {
-        places.getDetails(predictions[selectedCursor], function (details) {
-          onPlace(details);
-          if( addressResult ) {
-            if( addressResult.address.street_number ) {
-              wrapper.style.display = 'none';
-              input.blur();
-            } else {
-              focusAddressNumber();
-            }
-          }
-        });
-        e.preventDefault();
-        focusAddressNumber();
-        return;
-      }
-      if( waitingNumber() ) {
-        e.preventDefault();
-        focusAddressNumber();
-        return;
-      }
-      wrapper.style.display = 'none';
-    });
+    listen(input, 'blur', onBlur);
 
     listen(input, 'click', function () {
       wrapper.style.display = null;
 
-      if( this.value !== lastValue ) fetchResults(this.value, function () {
+      if( this.value !== lastValue ) fetchResults(this.value, null, function () {
         wrapper.style.display = null;
       });
 
