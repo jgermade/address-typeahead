@@ -268,20 +268,21 @@
 
     var ta = this,
       // google object
-        places = this.places;
+        places = this.places,
 
     // DOM nodes
-    var predictionsWrapper = createElement('div', { className: 'predictions' }),
-        wrapper = createElement('div', { className: 'typeahead-predictions' }, [
-          predictionsWrapper, createElement('div', { className: 'typeahead-license' }, places.licenseHTML)
-        ]);
+        predictionsWrapper = createElement('div', { className: 'predictions' }),
+        wrapper = (function () {
+          var wrapper = createElement('div', { className: 'typeahead-predictions' }, [
+            predictionsWrapper, createElement('div', { className: 'typeahead-license' }, places.licenseHTML)
+          ]);
 
-    ( appendTo ? ( typeof appendTo === 'string' ? document.querySelector(appendTo) : appendTo ) : document.body ).appendChild(wrapper);
-
-    // ------------------------------------------------------------------------
+          ( appendTo ? ( typeof appendTo === 'string' ? document.querySelector(appendTo) : appendTo ) : document.body ).appendChild(wrapper);
+          return wrapper;
+        })(),
 
       // loaded predictions
-    var predictions = [],
+        predictions = [],
       // saving Google API requests
         predictionsCache = {},
 
@@ -368,7 +369,10 @@
             focusAddressNumber();
           }
 
-        };
+        },
+
+      // last fetched value
+        lastValue = null;
 
 
     function waitingNumber () {
@@ -384,8 +388,6 @@
       }
     }
 
-    var lastValue = null;
-    
     function onInput (_e) {
       var value = this.value, currentAddress = addressResult;
 
@@ -408,6 +410,9 @@
         // }
       });
     }
+
+    listen(input, 'input', onInput);
+    listen(input, 'change', onInput);
 
     function onBlur (e) {
       if( !addressResult && predictionsWrapper.children[selectedCursor] ) {
@@ -434,8 +439,7 @@
       wrapper.style.display = 'none';
     }
 
-    listen(input, 'input', onInput);
-    listen(input, 'change', onInput);
+    listen(input, 'blur', onBlur);
 
     listen(document.body, 'mousedown', function (e) {
       var el = e.target, cursor;
@@ -493,8 +497,6 @@
 
       wrapper.style.display = null;
     });
-
-    listen(input, 'blur', onBlur);
 
     listen(input, 'click', function () {
       wrapper.style.display = null;
