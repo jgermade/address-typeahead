@@ -1,3 +1,4 @@
+/* global define */
 
 (function (root, factory) {
   if( typeof module !== 'undefined' && module.exports ) {
@@ -54,8 +55,9 @@
   }
 
   function serialize (o, nested) {
-    var params = '',
-        nested = nested || noop;
+    var params = '';
+
+    nested = nested || noop;
 
     for( var key in o ) {
       params += (params ? '&' : '') + key + '=' + nested(o[key]);
@@ -65,7 +67,6 @@
   }
 
   function getIndex (list, el) {
-    var index = -5;
     for( var i = 0, n = list.length; i < n ; i++ ) {
       if( list[i] === el ) return i;
     }
@@ -80,7 +81,7 @@
   function address2Search (address, numberPlaceholder) {
     if( !address ) return '';
     return address.street + ( commaIf(address.street_number) || (numberPlaceholder ? ', ' : '') ) + commaIf(address.locality || address.city);
-  };
+  }
 
   // var closest = document.documentElement.closest ? function (el, s) {
   //   return el.closest(s);
@@ -97,12 +98,12 @@
       return element.addEventListener(eventName, listener, useCapture);
     } : function(element, eventName, listener, useCapture) {
       return element.attachEvent('on' + eventName, listener, useCapture);
-    },
-    unlisten = document.documentElement.removeEventListener ? function(element, eventName, listener, useCapture) {
-      return element.removeEventListener(eventName, listener, useCapture);
-    } : function(element, eventName, listener, useCapture) {
-      return element.detachEvent('on' + eventName, listener, useCapture);
     };
+    // unlisten = document.documentElement.removeEventListener ? function(element, eventName, listener, useCapture) {
+    //   return element.removeEventListener(eventName, listener, useCapture);
+    // } : function(element, eventName, listener, useCapture) {
+    //   return element.detachEvent('on' + eventName, listener, useCapture);
+    // };
 
   var hasClass = document.documentElement.classList ? function (el, className) {
       return el.classList.contains(className);
@@ -112,7 +113,7 @@
     addClass = document.documentElement.classList ? function (el, className) {
       el.classList.add(className);
     } : function (el, className) {
-      if( !classListHas(el, className) ) {
+      if( !hasClass(el, className) ) {
         el.className += ' ' + className;
       }
     },
@@ -146,9 +147,6 @@
       self.placesService = new places.PlacesService(div);
 
       self.googlePredictionsOK = window.google.maps.places.PlacesServiceStatus.OK;
-
-      // console.log('placesService div', div);
-      // document.body.append(div);
 
       self.onInit = false;
       listeners.forEach(function (listener) {
@@ -219,9 +217,9 @@
     result += src.substr(cursor);
 
     return result;
-  }
+  };
 
-  GooglePlaces.prototype.parsePlace = function (place) {
+  GooglePlaces.parsePlace = function (place) {
     var fields = {};
 
     place.address_components.forEach(function (component) {
@@ -238,20 +236,20 @@
       state: fields.administrative_area_level_1
     };
 
-    // address.$$fields = fields;
-    // address.$$place = place;
-
     return {
       address: address,
       fields: fields,
       place: place
     };
-  }
+  };
 
   // --------------------------------------------------------------------------
 
   function AddressTypeahead (type, key, config) {
-    if( type === 'google' ) this.places = new GooglePlaces(key, config.google);
+    if( type === 'google' ) {
+      this.places = new GooglePlaces(key, config.google);
+      this.parsePlace = GooglePlaces.parsePlace;
+    }
 
     this.config = config || {};
     this.messages = extend({
@@ -261,6 +259,8 @@
     if( !this.places ) throw new Error('typeahead `' + type + '` not supported');
   }
 
+  AddressTypeahead.GooglePlaces = GooglePlaces;
+
   AddressTypeahead.prototype.bind = function (input, onValidPlace, appendTo) {
     input = typeof input === 'string' ? document.querySelector(input) : input;
     this.input = input;
@@ -268,33 +268,19 @@
     var ta = this,
         places = this.places,
         predictionsCache = {},
-        predictionsWrapper = createElement('div', { className: 'predictions' });
+        predictionsWrapper = createElement('div', { className: 'predictions' }),
         wrapper = createElement('div', { className: 'typeahead-predictions' }, [
           predictionsWrapper, createElement('div', { className: 'typeahead-license' }, places.licenseHTML)
         ]),
         predictions = [],
         selectedCursor = -1,
-        waitingNumber = false,
         addressResult = null,
-        updatePredictions = function (_predictions) {
+        renderPredictions = function (_predictions, cb, beforeRender) {
           var i, n, children = predictionsWrapper.children;
-          console.log('predictions', _predictions);
+
           predictions = _predictions;
 
-          if( predictions.length > 1 ) {
-            wrapper.style.display = null;
-          }
-
-          if( waitingNumber ) {
-            if( predictions.length === 1 ) {
-              console.log('prediction', predictions[0]);
-              places.getDetails(predictions[0], onPlace);
-              return;
-            }
-          }
-
-          if( children[selectedCursor] ) removeClass(children[selectedCursor], 'selected');
-          selectedCursor = -1;
+          safeFn(beforeRender)();
 
           if( predictions.length > children.length ) {
             for( i = 0, n = predictions.length - children.length ; i < n ; i++ ) {
@@ -304,8 +290,8 @@
 
           for( i = 0, n = predictions.length; i < n ; i++ ) {
             children[i].innerHTML = places.getPredictionHTML(predictions[i]);
-            if( i ) removeClass(children[i], 'selected');
-            else addClass(children[i], 'selected');
+            if( i === selectedCursor ) addClass(children[i], 'selected');
+            else removeClass(children[i], 'selected');
           }
 
           if( predictions.length < children.length ) {
@@ -314,84 +300,109 @@
             }
           }
 
-          if( predictions.length ) {
-            selectedCursor = 0;
-          }
-
-          waitingNumber = false;
-          removeClass(input, 'waiting-number');
+          safeFn(cb)();
         };
 
     ( appendTo ? ( typeof appendTo === 'string' ? document.querySelector(appendTo) : appendTo ) : document.body ).appendChild(wrapper);
 
-    var debouncedPredictions = debounce(function (value, cb) {
+    var numDebounced = 0,
+        debouncedPredictions = debounce(function (value, loading, cb) {
+          loading();
           places.getPredictions(value, cb);
         }),
-        fetchResults = function (value, cb) {
+        fetchResults = function (value, cb, beforeRender) {
+
           addressResult = null;
+
           if( value ) {
-            predictionsCache[value] ? updatePredictions(predictionsCache[value]) : debouncedPredictions(value, function (results) {
-              predictionsCache[value] = results;
-              updatePredictions(results);
-            });
-          } else updatePredictions([]);
+            if( predictionsCache[value] ) {
+              renderPredictions(predictionsCache[value], cb, beforeRender);
+            } else {
+              var sec = ++numDebounced;
+              debouncedPredictions(value, function () {
+                addClass(wrapper, 'js-typeahead-loading');
+              }, function (results) {
+                if( sec !== numDebounced ) return;
+                removeClass(wrapper, 'js-typeahead-loading');
+                predictionsCache[value] = results;
+                renderPredictions(results, cb, beforeRender);
+              });
+            }
+          } else {
+            renderPredictions([], cb, beforeRender);
+          }
         },
         onPlace = function (place) {
-          console.log('place', place, places.parsePlace(place) );
-          addressResult = places.parsePlace(place);
+          addressResult = ta.parsePlace(place);
 
           var address = addressResult.address;
 
           input.value = address2Search( address, true );
 
-          if( document.activeElement !== input ) wrapper.style.display = 'none';
-
           if( address.street_number ) {
             input.setCustomValidity('');
-            updatePredictions([]);
+            removeClass(input, 'waiting-number');
             safeFn(onValidPlace)(addressResult);
           } else {
             input.setCustomValidity(ta.messages.number_missing);
-            waitingNumber = true;
             addClass(input, 'waiting-number');
             if( document.activeElement !== input ) input.focus();
             input.setSelectionRange(address.street.length + 2, address.street.length + 2);
           }
+
         };
 
-    listen(input, 'input', function () {
-      fetchResults(this.value);
-      if( waitingNumber ) return;
-      // wrapper.style.display = null;
-    });
+    var lastValue = null;
+
+    function waitingNumber () {
+      return addressResult && addressResult.address.street_number === undefined;
+    }
+
+    function focusAddressNumber () {
+      if( addressResult ) {
+        setTimeout(function () {
+          if( document.activeElement !== input ) input.focus();
+          input.setSelectionRange(addressResult.address.street.length + 2, addressResult.address.street.length + 2);
+        }, 0);
+      }
+    }
+
+    function onInput (_e) {
+      var value = this.value, currentAddress = addressResult;
+      fetchResults(value, function () {
+        if( currentAddress && predictions.length === 1 ) {
+          addressResult = currentAddress;
+          places.getDetails(predictions[0], onPlace);
+        }
+      }, function () {
+        if( lastValue === null || value !== lastValue ) {
+          selectedCursor = predictions.length ? 0 : -1;
+          lastValue = value;
+        }
+      });
+    }
+
+    listen(input, 'input', onInput);
+    listen(input, 'change', onInput);
 
     listen(document.body, 'mousedown', function (e) {
-      var el = e.target, prediction;
+      var el = e.target, cursor;
 
       while( el ) {
         if( hasClass(el, 'prediction') ) {
-          prediction = getIndex(predictionsWrapper.children, el);
-          // places.getDetails(predictions[getIndex(predictionsWrapper.children, el)], onPlace);
-          // console.log( 'prediction', predictions[getIndex(predictionsWrapper.children, el)], getIndex(predictionsWrapper.children, el) );
-          // break;
+          cursor = getIndex(predictionsWrapper.children, el);
         } else if( el === predictionsWrapper ) {
-          if( prediction >= 0 ) {
-            places.getDetails(predictions[prediction], onPlace);
+          if( cursor >= 0 ) {
+            selectedCursor = cursor;
+            places.getDetails(predictions[cursor], onPlace);
           }
           break;
         }
         el = el.parentElement;
       }
-
-      console.log('mousedown', predictionsWrapper);
-
-      wrapper.style.display = 'none';
     }, true);
 
     listen(input, 'keydown', function (e) {
-      // if( !waitingNumber ) wrapper.style.display = null;
-      // console.log('code', e.keyCode);
-
       var children = predictionsWrapper.children,
           cursorLastChild = children.length - 1, nextCursor;
 
@@ -404,7 +415,6 @@
           if( children[selectedCursor] ) removeClass(children[selectedCursor], 'selected');
           addClass(children[nextCursor], 'selected');
           selectedCursor = nextCursor;
-          if( predictions.length ) wrapper.style.display = null;
           break;
         case 40:
           if( !predictionsWrapper.children.length ) return;
@@ -414,39 +424,56 @@
           if( children[selectedCursor] ) removeClass(children[selectedCursor], 'selected');
           addClass(children[nextCursor], 'selected');
           selectedCursor = nextCursor;
-          if( predictions.length ) wrapper.style.display = null;
           break;
         case 13:
-          e.preventDefault();
-        case 9:
-          if( children[selectedCursor] ) {
-            places.getDetails(predictions[selectedCursor], onPlace);
-            if( !waitingNumber ) wrapper.style.display = 'none';
-          }
+          if( !addressResult ) e.preventDefault();
           break;
       }
     });
 
     wrapper.style.display = 'none';
     listen(input, 'focus', function () {
-      if( waitingNumber ) {
+      if( addressResult && addressResult.address.street_number === undefined ) {
         setTimeout(function () {
           input.setSelectionRange(addressResult.address.street.length + 2, addressResult.address.street.length + 2);
         }, 0);
+      }
+
+      wrapper.style.display = null;
+    });
+
+    listen(input, 'blur', function (e) {
+      if( !addressResult && predictionsWrapper.children[selectedCursor] ) {
+        places.getDetails(predictions[selectedCursor], function (details) {
+          onPlace(details);
+          if( addressResult ) {
+            if( addressResult.address.street_number ) {
+              input.blur();
+            } else {
+              focusAddressNumber();
+            }
+          }
+        });
+        e.preventDefault();
+        focusAddressNumber();
         return;
       }
-      // wrapper.style.display = null;
-      if( addressResult ) {
-        setTimeout(function () {
-          input.setSelectionRange(0, input.value.length);
-        }, 0);
-      } else fetchResults(this.value);
+      if( waitingNumber() ) {
+        e.preventDefault();
+        focusAddressNumber();
+        return;
+      }
+      wrapper.style.display = 'none';
     });
+
     listen(input, 'click', function () {
-      // wrapper.style.display = null;
-      fetchResults(this.value, function () {
+      wrapper.style.display = null;
+
+      if( this.value !== lastValue ) fetchResults(this.value, function () {
         wrapper.style.display = null;
       });
+
+      if( document.activeElement !== input && waitingNumber() ) focusAddressNumber();
     });
 
     return this;
