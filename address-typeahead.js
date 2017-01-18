@@ -80,7 +80,8 @@
 
   function address2Search (address, numberPlaceholder) {
     if( !address ) return '';
-    return address.street + ( commaIf(address.street_number) || (numberPlaceholder ? ', ' : '') ) + commaIf(address.locality || address.city);
+    console.log('address2Search', address);
+    return address.street + ( commaIf(address.street_number) || (numberPlaceholder ? ', ' : '') ) + commaIf(address.city || address.locality);
   }
 
   // var closest = document.documentElement.closest ? function (el, s) {
@@ -235,6 +236,10 @@
       city: fields.administrative_area_level_2,
       state: fields.administrative_area_level_1
     };
+
+    console.log('address', address);
+    console.log('fields', fields);
+    console.log('place', place);
 
     return {
       address: address,
