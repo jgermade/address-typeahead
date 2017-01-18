@@ -40,7 +40,7 @@
   }
 
   function debounce (fn, duration) {
-    duration = duration || 400;
+    duration = duration || 200;
     var waiting;
 
     return function () {
@@ -267,15 +267,31 @@
     this.input = input;
 
     var ta = this,
-        places = this.places,
-        predictionsCache = {},
-        predictionsWrapper = createElement('div', { className: 'predictions' }),
+      // google object
+        places = this.places;
+
+    // DOM nodes
+    var predictionsWrapper = createElement('div', { className: 'predictions' }),
         wrapper = createElement('div', { className: 'typeahead-predictions' }, [
           predictionsWrapper, createElement('div', { className: 'typeahead-license' }, places.licenseHTML)
-        ]),
-        predictions = [],
+        ]);
+
+    ( appendTo ? ( typeof appendTo === 'string' ? document.querySelector(appendTo) : appendTo ) : document.body ).appendChild(wrapper);
+
+    // ------------------------------------------------------------------------
+
+      // loaded predictions
+    var predictions = [],
+      // saving Google API requests
+        predictionsCache = {},
+
+      // cursor (selected) prediction
         selectedCursor = -1,
+
+      // matched address
         addressResult = null,
+
+      // renders loaded predictions
         renderPredictions = function (_predictions, beforeRender, afterRender) {
           var i, n, children = predictionsWrapper.children;
 
@@ -302,17 +318,17 @@
           }
 
           safeFn(afterRender)();
-        };
+        },
 
-    ( appendTo ? ( typeof appendTo === 'string' ? document.querySelector(appendTo) : appendTo ) : document.body ).appendChild(wrapper);
-
-    var numDebounced = 0,
+      // debouncing predictions request for 400ms
         debouncedPredictions = debounce(function (value, loading, cb) {
           loading();
           places.getPredictions(value, cb);
-        }),
-        fetchResults = function (value, beforeRender, afterRender) {
+        }, 400),
+        numDebounced = 0,
 
+      // fetches predictions if any value and not cached
+        fetchResults = function (value, beforeRender, afterRender) {
           addressResult = null;
 
           if( value ) {
@@ -333,6 +349,8 @@
             renderPredictions([], beforeRender, afterRender);
           }
         },
+
+      // when an place is choosed
         onPlace = function (place) {
           addressResult = ta.parsePlace(place);
 
@@ -352,7 +370,6 @@
 
         };
 
-    var lastValue = null;
 
     function waitingNumber () {
       return addressResult && addressResult.address.street_number === undefined;
@@ -367,6 +384,8 @@
       }
     }
 
+    var lastValue = null;
+    
     function onInput (_e) {
       var value = this.value, currentAddress = addressResult;
 
