@@ -7,12 +7,37 @@
     <script src="./address-typeahead.js"></script>
     <style rel="stylesheet">
 
-      body > main {
+      main {
         display: block;
         width: 960px;
         max-width: 100%;
-        margin: 0 auto;
+        margin: 8px auto;
         padding: 8px
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      .hide-submit {
+        display: block;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+        opacity: 0;
+      }
+
+      pre, code {
+        font-family: Consolas, Courier, monospace;
+        color: #333;
+        background: rgb(250, 250, 250);
+      }
+
+      .code {
+        padding: 1em;
+        border: 1px solid #eee;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
 
       .typeahead-wrapper {
@@ -33,7 +58,7 @@
         border-left: 4px solid transparent;
       }
         .typeahead-predictions .predictions .prediction:hover {
-          background: #eee;
+          background: #f9f9f9;
           cursor: pointer;
         }
 
@@ -46,32 +71,36 @@
       }
 
       .typeahead-predictions > .typeahead-license {
-        padding: 8px;
+        padding: 4px;
         text-align: right;
-        border-top: 1px solid #ddd;
+        border-top: 1px solid #eee;
       }
 
       .typeahead-predictions > .typeahead-license img {
         vertical-align: middle;
+        width: 120px;
       }
 
     </style>
 
-    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.2/build/pure-min.css" integrity="sha384-UQiGfs9ICog+LwheBSRCt1o5cbyKIHbwjWscjemyBMT9YCUMZffs6UqUTd0hObXD" crossorigin="anonymous">
   </head>
   <body>
     <main>
-      <form action="javascript:console.log('gogogo!');" class="pure-form">
-        <fieldset>
-          <legend>Google Address Typeahead DEMO</legend>
+      <div>
+        <form action="javascript:console.log('gogogo!');" class="pure-form pure-form-stacked">
+          <div class="pure-g">
+            <input class="pure-u-1" type="text" placeholder="Google Maps API key" required></input>
+            <input class="pure-u-1" type="search" placeholder="Buscar dirección" autofocus required></input>
+          </div>
 
-          <input type="text" placeholder="Google Maps API key" required></input>
-          <input type="search" placeholder="Buscar dirección" autofocus required></input>
-          <button type="submit" class="pure-button pure-button-primary">Buscar</button>
-        </fieldset>
-      </form>
-      <div class="typeahead-wrapper"></div>
-      <pre id="result"></pre>
+          <div class="hide-submit">
+            <button type="submit"></button>
+          </div>
+        </form>
+        <div class="typeahead-wrapper"></div>
+        <pre class="code"></pre>
+      </div>
     </main>
     <script>
       var qs = (function () {
@@ -100,7 +129,7 @@
             number_missing: 'Falta el número de la dirección'
           },
           onValidresult = function (result) {
-            document.getElementById('result').innerHTML = JSON.stringify(result, null, '\t');
+            document.querySelector('pre.code').innerHTML = JSON.stringify(result, null, '  ');
           };
 
       if( appKey ) {

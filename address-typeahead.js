@@ -300,6 +300,8 @@
 
           safeFn(beforeRender)();
 
+          wrapper.style.display = null;
+
           if( predictions.length > children.length ) {
             for( i = 0, n = predictions.length - children.length ; i < n ; i++ ) {
               predictionsWrapper.appendChild( createElement('div', { className: 'prediction' }) );
@@ -318,6 +320,9 @@
             }
           }
 
+          if( predictions.length ) wrapper.style.display = null;
+          else wrapper.style.display = 'none';
+
           safeFn(afterRender)();
         },
 
@@ -329,12 +334,12 @@
         numDebounced = 0,
 
       // fetches predictions if any value and not cached
-        fetchResults = function (value, beforeRender, afterRender) {
+        fetchResults = function (value, beforeRender, afterRender, skipRender) {
           addressResult = null;
 
           if( value ) {
             if( predictionsCache[value] ) {
-              renderPredictions(predictionsCache[value], beforeRender, afterRender);
+              if( !skipRender ) renderPredictions(predictionsCache[value], beforeRender, afterRender);
             } else {
               var sec = ++numDebounced;
               debouncedPredictions(value, function () {
@@ -343,11 +348,11 @@
                 if( sec !== numDebounced ) return;
                 removeClass(wrapper, 'js-typeahead-loading');
                 predictionsCache[value] = results;
-                renderPredictions(results, beforeRender, afterRender);
+                if( !skipRender ) renderPredictions(results, beforeRender, afterRender);
               });
             }
           } else {
-            renderPredictions([], beforeRender, afterRender);
+            if( !skipRender ) renderPredictions([], beforeRender, afterRender);
           }
         },
 
@@ -358,6 +363,7 @@
           var address = addressResult.address;
 
           input.value = address2Search( address, true );
+          // fetchResults(input.value, null, null, true);
 
           if( address.street_number ) {
             input.setCustomValidity('');
@@ -401,7 +407,7 @@
           lastValue = value;
         }
 
-        if( currentAddress && predictions.length === 1 ) {
+        if( currentAddress && !currentAddress.address.street_number && predictions.length === 1 ) {
           addressResult = currentAddress;
           places.getDetails(predictions[selectedCursor], onPlace);
           // input.setCustomValidity('');
@@ -495,14 +501,14 @@
         focusAddressNumber();
       }
 
-      wrapper.style.display = null;
+      if( predictions.length ) wrapper.style.display = null;
     });
 
     listen(input, 'click', function () {
-      wrapper.style.display = null;
+      if( predictions.length ) wrapper.style.display = null;
 
       if( this.value !== lastValue ) fetchResults(this.value, null, function () {
-        wrapper.style.display = null;
+        if( predictions.length ) wrapper.style.display = null;
       });
 
       if( document.activeElement !== input && waitingNumber() ) focusAddressNumber();
