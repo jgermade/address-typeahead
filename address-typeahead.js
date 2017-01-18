@@ -494,7 +494,7 @@
       }
     });
 
-    if( document.activeElement !== input ) wrapper.style.display = 'none';
+    wrapper.style.display = 'none';
 
     listen(input, 'focus', function () {
       if( waitingNumber() ) {
