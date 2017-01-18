@@ -449,6 +449,7 @@
           onPlace(details);
           if( addressResult ) {
             if( addressResult.address.street_number ) {
+              wrapper.style.display = null;
               input.blur();
             } else {
               focusAddressNumber();
