@@ -431,7 +431,8 @@
       }
     });
 
-    wrapper.style.display = 'none';
+    if( document.activeElement !== input ) wrapper.style.display = 'none';
+
     listen(input, 'focus', function () {
       if( addressResult && addressResult.address.street_number === undefined ) {
         setTimeout(function () {
