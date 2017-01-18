@@ -351,7 +351,7 @@
           }
         },
 
-      // when an place is choosed
+      // when a place is choosed
         onPlace = function (place) {
           addressResult = ta.parsePlace(place);
 
